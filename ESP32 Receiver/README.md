@@ -1,0 +1,1 @@
+This is a driver to simplify the usage of the pcf8574 I2C GPIO expander for V5.2.2 ESP32 IDF.
