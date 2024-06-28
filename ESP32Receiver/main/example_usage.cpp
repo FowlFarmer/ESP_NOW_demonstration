@@ -15,20 +15,30 @@
 
 static const char *TAG = "Receiver"; //needed for ESP_LOGI
 
+enum PacketID{
+    BEC_DOCKED_VOLTAGE_STATUS = 90,
+};
 
-extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
+struct DockedVoltageStatus {
+    uint8_t packet_id; // RBT_DOCKED_VOLTAGE_STATUS
+    uint32_t device_id;
+    uint16_t aux_voltage; // millivolt current voltage
+};
+
+DockedVoltageStatus status;
+
 pcf8574 gpioexpander; //move this global so cb can use it
-uint8_t read{};
+
 //uint8_t sender_mac[6]{0x84, 0xf7, 0x03, 0x05, 0xa6, 0x1c};
 void cb(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len){
-    read = *data;
-    //ESP_LOGI(TAG, "recieved");
-    gpioexpander.set_bit_mask(read);
-    ESP_LOGI(TAG, "Received: %d", (char)read);
+    if(*data == BEC_DOCKED_VOLTAGE_STATUS){
+        memcpy(&status, data, len);
+        ESP_LOGI(TAG, "Received: %d", status.aux_voltage);
+    }
     return;
 }
 
-void app_main()
+extern "C" void app_main()
 {
         // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -73,7 +83,7 @@ void app_main()
             //}
       //  }
     }
-}
+
 
 
 
