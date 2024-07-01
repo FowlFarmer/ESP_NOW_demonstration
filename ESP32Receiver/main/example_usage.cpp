@@ -34,7 +34,10 @@ void cb(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len){
     if(*data == BEC_DOCKED_VOLTAGE_STATUS){
         memcpy(&status, data, len);
         ESP_LOGI(TAG, "Received: %d", status.aux_voltage);
-    }
+        }
+    //else{
+        //ESP_LOGI(TAG, "Received SOMETHING");
+    //}
     return;
 }
 
@@ -68,6 +71,7 @@ extern "C" void app_main()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_channel(14, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "boot WIFI");
 
     ESP_ERROR_CHECK(esp_now_init());
@@ -82,6 +86,9 @@ extern "C" void app_main()
           //  read = NULL;
             //}
       //  }
+    while(1){
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
     }
 
 

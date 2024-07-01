@@ -19,7 +19,14 @@ static const char *TAG = "Sender"; //needed for ESP_LOGI
 
 extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
 
-uint8_t receiver_mac[6]{0x70, 0x04, 0x1d, 0x13, 0xd1, 0x30};
+uint8_t receiver_mac[6]{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
+struct DockedVoltageStatus {
+    uint8_t packet_id; // RBT_DOCKED_VOLTAGE_STATUS
+    uint32_t device_id;
+    uint16_t aux_voltage; // millivolt current voltage
+};
+
 
 
 void app_main(void) {
@@ -65,27 +72,31 @@ void app_main(void) {
     peerInfo.encrypt = false;
     ESP_ERROR_CHECK(esp_now_add_peer(&peerInfo)); //THIS IS TO ADD IT TO PEER LIST, CAN JUST PUT ADDRESS IF 1 ESP DEVICE TO TALK TO
 
-    uint8_t read{};
+    //uint8_t read{};
     //uint8_t time{0};
     while(1){
         ESP_LOGI(TAG, "pass");
-        uart_read_bytes(uart_num, &read, 1, 1000);
-        if(read != NULL){
+        //uart_read_bytes(uart_num, &read, 1, 1000);
+        //if(read != NULL){
             //////////////////
         //ESP_ERROR_CHECK(
-        ESP_ERROR_CHECK(esp_now_send(receiver_mac, &read, 1));
+        DockedVoltageStatus status;
+    status.packet_id = 90;
+    status.device_id = 0;
+    status.aux_voltage = 27000;
+        ESP_ERROR_CHECK(esp_now_send(receiver_mac, &status.packet_id, sizeof(status)));
             //////////////////
-        ESP_LOGI(TAG, "%d", read);
+        //ESP_LOGI(TAG, "%d", read);
 
-        uart_write_bytes(uart_num, &read, 1);
+        //uart_write_bytes(uart_num, &read, 1);
         }/*
         else{
             ESP_ERROR_CHECK(esp_now_send(&receiver_mac[0], &time, 1));
             ++time;
             //////////////////
         }*/
-        read = NULL;
-    }
+        //read = NULL;
+ //   }
 }
 }
 
