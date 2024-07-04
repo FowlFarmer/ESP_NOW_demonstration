@@ -20,12 +20,30 @@ static const char *TAG = "Sender"; //needed for ESP_LOGI
 extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
 
 uint8_t receiver_mac[6]{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+struct BmsData {
+    uint8_t packet_id;
+    float voltage;
+    float current;
+    float percentage;
+    float temperature;
+    uint32_t charge;
+    uint8_t power_supply_status;
+    uint8_t power_supply_health;
+    uint8_t power_supply_technology;
+} __attribute__((__packed__));
 
 struct DockedVoltageStatus {
-    uint8_t packet_id; // RBT_DOCKED_VOLTAGE_STATUS
+    uint8_t packet_id;
     uint32_t device_id;
-    uint16_t aux_voltage; // millivolt current voltage
-};
+    char device_name[20];
+    BmsData bms_data;
+    uint16_t aux_voltage;     // External auxiliary voltage (in millivolts)
+    uint8_t conn_health : 2;  // Connection health (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t aux_health : 2;   // Connection health [aux] (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t reserved : 4;     // Reserved for future use
+} __attribute__((__packed__));
+
+DockedVoltageStatus status;
 
 
 
@@ -81,10 +99,13 @@ void app_main(void) {
             //////////////////
         //ESP_ERROR_CHECK(
         DockedVoltageStatus status;
-    status.packet_id = 90;
+    status.packet_id = 10;
     status.device_id = 0;
     status.aux_voltage = 27000;
         ESP_ERROR_CHECK(esp_now_send(receiver_mac, &status.packet_id, sizeof(status)));
+        ESP_LOGI(TAG, "sent");
+        vTaskDelay(pdMS_TO_TICKS(10));
+        uart_write_bytes(uart_num, &status, sizeof(status));
             //////////////////
         //ESP_LOGI(TAG, "%d", read);
 
