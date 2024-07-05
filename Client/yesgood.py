@@ -20,12 +20,12 @@ def decode_packet(serial_port):
 
     while True:
         byte = serial_port.read(1)
-        print(byte[0])
+        #print(byte)
         if len(byte) == 0:
             continue
 
         if state == 'HEADER': #I guess what i said under this is wrong...
-            #print("header") #The state machine is prolly printing header all the tie because decode is so fking fast it returns to header instantly each time
+            print("header") #The state machine is prolly printing header all the tie because decode is so fking fast it returns to header instantly each time
             if byte[0] == UART_PACKET_HEADER:
                 state = 'LENGTH'
 
@@ -53,6 +53,6 @@ def decode_packet(serial_port):
                 data_counter = 0
 
 print('hi')
-with serial.Serial('/dev/ttyUSB1', 115200, timeout = 1)  as ser:# open serial port
+with serial.Serial('/dev/ttyUSB1', 921600, timeout = 1)  as ser:# open serial port
     while(1):
         decode_packet(ser)

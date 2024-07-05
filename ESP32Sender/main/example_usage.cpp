@@ -98,12 +98,22 @@ void app_main(void) {
         //if(read != NULL){
             //////////////////
         //ESP_ERROR_CHECK(
-        DockedVoltageStatus status;
+        DockedVoltageStatus status{};
     status.packet_id = 10;
+    status.bms_data.packet_id = 69;
     status.device_id = 0;
     status.aux_voltage = 27000;
+    status.bms_data.charge = 69;
+    status.device_name[19] = 'a';
+    status.bms_data.power_supply_health = 69;
+    status.bms_data.voltage = 420;
+    status.bms_data.current = 421;
+    status.bms_data.percentage = 422;
+    status.bms_data.temperature = 0;
+
+
         ESP_ERROR_CHECK(esp_now_send(receiver_mac, &status.packet_id, sizeof(status)));
-        ESP_LOGI(TAG, "sent");
+        ESP_LOGI(TAG, "%d", sizeof(status));
         vTaskDelay(pdMS_TO_TICKS(10));
         uart_write_bytes(uart_num, &status, sizeof(status));
             //////////////////
