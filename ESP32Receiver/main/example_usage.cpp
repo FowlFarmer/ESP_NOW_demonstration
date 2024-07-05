@@ -15,20 +15,50 @@
 
 static const char *TAG = "Receiver"; //needed for ESP_LOGI
 
+enum PacketID{
+    RBT_DOCKED_VOLTAGE_STATUS = 10,
+};
 
-extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
+struct BmsData {
+    uint8_t packet_id;
+    float voltage;
+    float current;
+    float percentage;
+    float temperature;
+    uint32_t charge;
+    uint8_t power_supply_status;
+    uint8_t power_supply_health;
+    uint8_t power_supply_technology;
+} __attribute__((__packed__));
+
+struct DockedVoltageStatus {
+    uint8_t packet_id;
+    uint32_t device_id;
+    char device_name[20];
+    BmsData bms_data;
+    uint16_t aux_voltage;     // External auxiliary voltage (in millivolts)
+    uint8_t conn_health : 2;  // Connection health (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t aux_health : 2;   // Connection health [aux] (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t reserved : 4;     // Reserved for future use
+} __attribute__((__packed__));
+
+DockedVoltageStatus status;
+
 pcf8574 gpioexpander; //move this global so cb can use it
-uint8_t read{};
+
 //uint8_t sender_mac[6]{0x84, 0xf7, 0x03, 0x05, 0xa6, 0x1c};
 void cb(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len){
-    read = *data;
-    //ESP_LOGI(TAG, "recieved");
-    gpioexpander.set_bit_mask(read);
-    ESP_LOGI(TAG, "Received: %d", (char)read);
+    if(*data == RBT_DOCKED_VOLTAGE_STATUS){
+        memcpy(&status, data, len);
+        ESP_LOGI(TAG, "Received: %d", status.aux_voltage);
+        }
+    //else{
+        //ESP_LOGI(TAG, "Received SOMETHING");
+    //}
     return;
 }
 
-void app_main()
+extern "C" void app_main()
 {
         // Initialize NVS
     esp_err_t ret = nvs_flash_init();
@@ -58,6 +88,7 @@ void app_main()
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_channel(14, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "boot WIFI");
 
     ESP_ERROR_CHECK(esp_now_init());
@@ -72,8 +103,11 @@ void app_main()
           //  read = NULL;
             //}
       //  }
+    while(1){
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-}
+    }
+
 
 
 

@@ -16,10 +16,42 @@
 
 static const char *TAG = "Sender"; //needed for ESP_LOGI
 
+uint8_t receiver_mac[6]{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+struct BmsData {
+    uint8_t packet_id;
+    float voltage;
+    float current;
+    float percentage;
+    float temperature;
+    uint32_t charge;
+    uint8_t power_supply_status;
+    uint8_t power_supply_health;
+    uint8_t power_supply_technology;
+} __attribute__((__packed__));
+
+struct DockedVoltageStatus {
+    uint8_t packet_id;
+    uint32_t device_id;
+    char device_name[20];
+    BmsData bms_data;
+    uint16_t aux_voltage;     // External auxiliary voltage (in millivolts)
+    uint8_t conn_health : 2;  // Connection health (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t aux_health : 2;   // Connection health [aux] (00 = poor, 01 = good, 10 = fair, 11 = excellent)
+    uint8_t reserved : 4;     // Reserved for future use
+} __attribute__((__packed__));
+
+
+template <typename PacketInfo>
+class RobotConnectPacket {
+public:
+    union {
+        uint8_t data[sizeof(PacketInfo)];
+        PacketInfo packet;
+    };
+};
+using AMRDockedVoltageStatus = RobotConnectPacket<DockedVoltageStatus>;
 
 extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
-
-uint8_t receiver_mac[6]{0x70, 0x04, 0x1d, 0x13, 0xd1, 0x30};
 
 
 void app_main(void) {
@@ -56,36 +88,59 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_channel(14, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "boot WIFI");
 
     ESP_ERROR_CHECK(esp_now_init());
+    
     esp_now_peer_info_t peerInfo = {}; //YOU NEED THIS STUFF EVEN IF U ONLY HAVE 1 ESP NOW!!
     memcpy(peerInfo.peer_addr, receiver_mac, 6);
     peerInfo.channel = 0;
     peerInfo.encrypt = false;
     ESP_ERROR_CHECK(esp_now_add_peer(&peerInfo)); //THIS IS TO ADD IT TO PEER LIST, CAN JUST PUT ADDRESS IF 1 ESP DEVICE TO TALK TO
 
-    uint8_t read{};
+    //uint8_t read{};
     //uint8_t time{0};
     while(1){
         ESP_LOGI(TAG, "pass");
-        uart_read_bytes(uart_num, &read, 1, 1000);
-        if(read != NULL){
+        //uart_read_bytes(uart_num, &read, 1, 1000);
+        //if(read != NULL){
             //////////////////
         //ESP_ERROR_CHECK(
-        ESP_ERROR_CHECK(esp_now_send(receiver_mac, &read, 1));
-            //////////////////
-        ESP_LOGI(TAG, "%d", read);
+        AMRDockedVoltageStatus status{};
+        BmsData data{};
+        
+        status.packet.packet_id = 10;
+        status.packet.device_id = 0;
+        status.packet.aux_voltage = 27000;
+        status.packet.device_name[19] = 'a';
+        data.charge = 69;
+        data.packet_id = 69;
+        data.power_supply_health = 69;
+        data.voltage = 420;
+        data.current = 421;
+        data.percentage = 5;
+        data.temperature = 18;
+        data.charge = 32;
+        status.packet.bms_data = data;
 
-        uart_write_bytes(uart_num, &read, 1);
+
+        ESP_ERROR_CHECK(esp_now_send(receiver_mac, status.data, sizeof(status)));
+        ESP_LOGI(TAG, "%d : %f", sizeof(status), status.packet.bms_data.temperature); //%lu is long unsigned
+        vTaskDelay(pdMS_TO_TICKS(200));
+        //uart_write_bytes(uart_num, &status, sizeof(status));
+            //////////////////
+        //ESP_LOGI(TAG, "%d", read);
+
+        //uart_write_bytes(uart_num, &read, 1);
         }/*
         else{
             ESP_ERROR_CHECK(esp_now_send(&receiver_mac[0], &time, 1));
             ++time;
             //////////////////
         }*/
-        read = NULL;
-    }
+        //read = NULL;
+ //   }
 }
 }
 
