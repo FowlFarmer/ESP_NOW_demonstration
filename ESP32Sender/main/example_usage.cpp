@@ -16,9 +16,6 @@
 
 static const char *TAG = "Sender"; //needed for ESP_LOGI
 
-
-extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
-
 uint8_t receiver_mac[6]{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 struct BmsData {
     uint8_t packet_id;
@@ -43,8 +40,18 @@ struct DockedVoltageStatus {
     uint8_t reserved : 4;     // Reserved for future use
 } __attribute__((__packed__));
 
-DockedVoltageStatus status;
 
+template <typename PacketInfo>
+class RobotConnectPacket {
+public:
+    union {
+        uint8_t data[sizeof(PacketInfo)];
+        PacketInfo packet;
+    };
+};
+using AMRDockedVoltageStatus = RobotConnectPacket<DockedVoltageStatus>;
+
+extern "C"{ //mangling will make app_main() unrecognizeable to esp32 microcontroller so add syntax to not mangle (interesting topic)
 
 
 void app_main(void) {
@@ -81,9 +88,11 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_channel(14, WIFI_SECOND_CHAN_NONE));
     ESP_LOGI(TAG, "boot WIFI");
 
     ESP_ERROR_CHECK(esp_now_init());
+    
     esp_now_peer_info_t peerInfo = {}; //YOU NEED THIS STUFF EVEN IF U ONLY HAVE 1 ESP NOW!!
     memcpy(peerInfo.peer_addr, receiver_mac, 6);
     peerInfo.channel = 0;
@@ -98,24 +107,28 @@ void app_main(void) {
         //if(read != NULL){
             //////////////////
         //ESP_ERROR_CHECK(
-        DockedVoltageStatus status{};
-    status.packet_id = 10;
-    status.bms_data.packet_id = 69;
-    status.device_id = 0;
-    status.aux_voltage = 27000;
-    status.bms_data.charge = 69;
-    status.device_name[19] = 'a';
-    status.bms_data.power_supply_health = 69;
-    status.bms_data.voltage = 420;
-    status.bms_data.current = 421;
-    status.bms_data.percentage = 422;
-    status.bms_data.temperature = 0;
+        AMRDockedVoltageStatus status{};
+        BmsData data{};
+        
+        status.packet.packet_id = 10;
+        status.packet.device_id = 0;
+        status.packet.aux_voltage = 27000;
+        status.packet.device_name[19] = 'a';
+        data.charge = 69;
+        data.packet_id = 69;
+        data.power_supply_health = 69;
+        data.voltage = 420;
+        data.current = 421;
+        data.percentage = 5;
+        data.temperature = 18;
+        data.charge = 32;
+        status.packet.bms_data = data;
 
 
-        ESP_ERROR_CHECK(esp_now_send(receiver_mac, &status.packet_id, sizeof(status)));
-        ESP_LOGI(TAG, "%d", sizeof(status));
-        vTaskDelay(pdMS_TO_TICKS(10));
-        uart_write_bytes(uart_num, &status, sizeof(status));
+        ESP_ERROR_CHECK(esp_now_send(receiver_mac, status.data, sizeof(status)));
+        ESP_LOGI(TAG, "%d : %f", sizeof(status), status.packet.bms_data.temperature); //%lu is long unsigned
+        vTaskDelay(pdMS_TO_TICKS(200));
+        //uart_write_bytes(uart_num, &status, sizeof(status));
             //////////////////
         //ESP_LOGI(TAG, "%d", read);
 

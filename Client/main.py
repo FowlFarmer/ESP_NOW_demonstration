@@ -3,7 +3,7 @@ import struct
 
 a = 27*8
 #header 2byte, len 2byte, sum 1byte
-data_format = '<HHBBI20sBffIIIBBBHB'
+data_format = '<HHBBI20sBffffIBBBHB'
 #raw_format = '<B B B B {a}s'
 
 
@@ -48,8 +48,8 @@ def unpack_packet(packet):
         'bms_data_packet_id': unpacked_data[6],
         'voltage': unpacked_data[7],
         'current': unpacked_data[8],
-        'percentage': bytes(unpacked_data[9]),
-        'temperature': bytes(unpacked_data[10]),
+        'percentage': unpacked_data[9],
+        'temperature': unpacked_data[10],
         'charge': unpacked_data[11],
         'power_supply_status': unpacked_data[12],
         'power_supply_health': unpacked_data[13],
