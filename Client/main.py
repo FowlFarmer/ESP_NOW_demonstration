@@ -61,7 +61,7 @@ def unpack_packet(packet):
     }
     
     return power_mon_status
-with serial.Serial('/dev/ttyUSB1', 921600, timeout = 1)  as ser:# open serial port
+with serial.Serial('/dev/ttyUSB0', 921600, timeout = 1)  as ser:# open serial port
     ser.reset_input_buffer()
     while(1):
         ser.reset_input_buffer()

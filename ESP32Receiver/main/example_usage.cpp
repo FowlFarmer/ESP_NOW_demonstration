@@ -12,6 +12,7 @@
 #include <nvs_flash.h>
 #include <esp_event.h>
 
+#include "packets.h"
 
 static const char *TAG = "Receiver"; //needed for ESP_LOGI
 
@@ -19,42 +20,20 @@ enum PacketID{
     RBT_DOCKED_VOLTAGE_STATUS = 10,
 };
 
-struct BmsData {
-    uint8_t packet_id;
-    float voltage;
-    float current;
-    float percentage;
-    float temperature;
-    uint32_t charge;
-    uint8_t power_supply_status;
-    uint8_t power_supply_health;
-    uint8_t power_supply_technology;
-} __attribute__((__packed__));
-
-struct DockedVoltageStatus {
-    uint8_t packet_id;
-    uint32_t device_id;
-    char device_name[20];
-    BmsData bms_data;
-    uint16_t aux_voltage;     // External auxiliary voltage (in millivolts)
-    uint8_t conn_health : 2;  // Connection health (00 = poor, 01 = good, 10 = fair, 11 = excellent)
-    uint8_t aux_health : 2;   // Connection health [aux] (00 = poor, 01 = good, 10 = fair, 11 = excellent)
-    uint8_t reserved : 4;     // Reserved for future use
-} __attribute__((__packed__));
-
-DockedVoltageStatus status;
-
-pcf8574 gpioexpander; //move this global so cb can use it
+EspnowHidBridgePacketUnion packet;
 
 //uint8_t sender_mac[6]{0x84, 0xf7, 0x03, 0x05, 0xa6, 0x1c};
 void cb(const esp_now_recv_info_t *esp_now_info, const uint8_t *data, int len){
-    if(*data == RBT_DOCKED_VOLTAGE_STATUS){
-        memcpy(&status, data, len);
-        ESP_LOGI(TAG, "Received: %d", status.aux_voltage);
+    if(*data == 206){
+        memcpy(&packet, data, len);
+        for(int i = 0; i<32; ++i){
+
+        ESP_LOGI(TAG, "Received: %d", packet.packet.data[i]);
         }
-    //else{
-        //ESP_LOGI(TAG, "Received SOMETHING");
-    //}
+        }
+    // else{
+    //     ESP_LOGI(TAG, "recieved data of type %d", data[0]);
+    // }
     return;
 }
 
@@ -66,21 +45,21 @@ extern "C" void app_main()
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
-    ESP_ERROR_CHECK(ret);
-    i2c_master_bus_config_t conf;
-    conf.clk_source = I2C_CLK_SRC_DEFAULT;
-    conf.i2c_port = I2C_NUM_0;
-    conf.sda_io_num = GPIO_NUM_18;         // select GPIO specific to your project |||||||||||| numbers work in c due to less strict typed rules.
-    conf.scl_io_num = GPIO_NUM_19;         // select GPIO specific to your project
-    conf.glitch_ignore_cnt = 7;
-    conf.intr_priority = 2;
-    conf.trans_queue_depth = 0;
-    i2c_master_bus_handle_t bus_handle;
-    ESP_ERROR_CHECK(i2c_new_master_bus(&conf, &bus_handle)); 
+    // ESP_ERROR_CHECK(ret);
+    // i2c_master_bus_config_t conf;
+    // conf.clk_source = I2C_CLK_SRC_DEFAULT;
+    // conf.i2c_port = I2C_NUM_0;
+    // conf.sda_io_num = GPIO_NUM_18;         // select GPIO specific to your project |||||||||||| numbers work in c due to less strict typed rules.
+    // conf.scl_io_num = GPIO_NUM_19;         // select GPIO specific to your project
+    // conf.glitch_ignore_cnt = 7;
+    // conf.intr_priority = 2;
+    // conf.trans_queue_depth = 0;
+    // i2c_master_bus_handle_t bus_handle;
+    // ESP_ERROR_CHECK(i2c_new_master_bus(&conf, &bus_handle)); 
     
-    gpioexpander.init(bus_handle, PCF_ADDRESS_0, (uint8_t)1000); //all i2c
+    // gpioexpander.init(bus_handle, PCF_ADDRESS_0, (uint8_t)1000); //all i2c
 
-    ESP_LOGI(TAG, "boot 1");
+    // ESP_LOGI(TAG, "boot 1");
 
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
